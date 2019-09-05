@@ -1,8 +1,9 @@
 const express = require("express");
 const app = express();
-const cookieParser = require('cookie-parser');
+const cookieParser = require("cookie-parser");
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
+const bcrypt = require("bcrypt");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -21,17 +22,17 @@ const users = {
   "userRandomID": {
     id: "userRandomID", 
     email: "user@example.com", 
-    password: "purple-monkey-dinosaur"
+    password: bcrypt.hashSync("purple-monkey-dinosaur", 10)
   },
  "user2RandomID": {
     id: "user2RandomID", 
     email: "user2@example.com", 
-    password: "dishwasher-funk"
+    password: bcrypt.hashSync("dishwasher-funk", 10)
   },
   "aJ48lW": {
     id: "aJ48lW",
     email: "test@test.com",
-    password: "test"
+    password: bcrypt.hashSync("test", 10)
   }
 }
 
@@ -129,13 +130,11 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
   for(let user in users) {
-    if(users[user].email === req.body.email && users[user].password === req.body.password && emailExist(req.body.email)) {
+    if(users[user].email === req.body.email && bcrypt.compareSync(req.body.password, users[user].password) && emailExist(req.body.email)) {
       console.log("success");
       res.cookie("user_id", users[user].id)
-      // successLogin = true;
-      // res.cookie("user_id", users[user].id)
-      // res.redirect("/urls");
       res.redirect("/urls");
+      console.log("SUUUCCCEEESSS", users);
     }
   }
   res.statusCode = 403;
@@ -158,17 +157,19 @@ app.post("/register", (req, res) => {
   if(req.body.email === "" || req.body.password === "" || emailExist(req.body.email)) {
     console.log("DUDE put in some values");
     res.statusCode = 400;
-    res.send("AAAANNDD NOPE!");
+    res.sendStatus(400);
   } else {
-    users[randomUserID] = { id: randomUserID, email: req.body.email, password: req.body.password };
+    users[randomUserID] = { id: randomUserID, email: req.body.email, password: bcrypt.hashSync(req.body.password, 10) };
     res.cookie("user_id", randomUserID);
     res.redirect("/urls");
+    console.log("SUUUCCCEEESSS", users);
   }
 })
 
 app.get("/urls/:shortURL", (req, res) => {
   let templateVars = {};
   if(!users[req.cookies.user_id]){
+    //To still show the user all the URLs if they are not logged in
     templateVars = { user: users[req.cookies.user_id],
       shortURL: req.params.shortURL,
       longURL: urlDatabase[req.params.shortURL].longURL };
