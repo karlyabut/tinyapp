@@ -19,6 +19,7 @@ const generateRandomString = function() {
   return randomStr;
 };
 
+//Test users!!!!
 const users = { 
   "userRandomID": {
     id: "userRandomID", 
@@ -37,43 +38,18 @@ const users = {
   }
 }
 
-// const getUserByEmail = function(email, database) {
-//   for(let user in database) {
-//     if(email === database[user].email) {
-//       console.log(database[user].email);
-//       console.log(email);
-//       return user;
-//     }
-//   }
-// }
-
-// const urlDatabase = {
-//   "b2xVn2": "http://www.lighthouselabs.ca",
-//   "9sm5xK": "http://www.google.com"
-// };
-
-const urlDatabase = {
-  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
-  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" },
-  i3gOlr: { longURL: "https://www.gooasgle.ca", userID: "userRandomID" }
-};
+//Empty "database" where we store our newly created URLs
+const urlDatabase = {};
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.redirect("/login");
 });
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.get("/hello", (req, res) =>  {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
-
+//This is the function that filters URLs for a specific user
 const urlsForUser = function(id) {
   const filterArray = [];
   for(key of Object.keys(urlDatabase)) {
@@ -88,10 +64,8 @@ const urlsForUser = function(id) {
 }
 
 app.get("/urls", (req, res) => {
-  // console.log(users);
   let templateVars = {};
   if(!users[req.session.user_id]) {
-    // res.redirect("/login");
     templateVars = { user: users[req.session.user_id], 
       urls: urlDatabase };
     res.render("urls_index", templateVars);
@@ -119,7 +93,7 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${key}`);
 });
 
-//Login function
+//LOGIN functionality *******************************************************
 app.get("/login", (req, res) => {
   let templateVars = { user: users[req.session.user_id] };
   res.render("urls_login", templateVars);
@@ -133,15 +107,18 @@ app.post("/login", (req, res) => {
     }   
   }
   res.statusCode = 403;
-  res.sendStatus(403);
+  res.send("Invalid Credentials!");
 });
+//*******************************************************
 
+//LOGOUT functionality *******************************************************
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
-  res.redirect("/login");
+  req.session = null;
+  res.redirect("/urls");
 });
+//*******************************************************
 
-//Register
+//REGISTER functionality *******************************************************
 app.get("/register", (req, res) => {
   let templateVars = { user: users[req.session.user_id] };
   res.render("urls_register", templateVars);
@@ -149,31 +126,25 @@ app.get("/register", (req, res) => {
 
 app.post("/register", (req, res) => {
   let randomUserID = generateRandomString();
-  if(req.body.email === "" || req.body.password === "" || getUserByEmail(req.body.email, users)) {
+  if(req.body.email === "" || req.body.password === "") {
     res.statusCode = 400;
-    res.sendStatus(400);
+    res.send("Please fill in the form!");
+  } else if (getUserByEmail(req.body.email, users)) {
+    res.statusCode = 400;
+    res.send("Email is already registered!");
   } else {
     users[randomUserID] = { id: randomUserID, email: req.body.email, password: bcrypt.hashSync(req.body.password, 10) };
-    // res.cookie("user_id", randomUserID);
     req.session.user_id = randomUserID;
     res.redirect("/urls");
   }
 })
+//*******************************************************
 
 app.get("/urls/:shortURL", (req, res) => {
-  let templateVars = {};
-  if(!users[req.session.user_id]){
-    //To still show the user all the URLs if they are not logged in
-    templateVars = { user: users[req.session.user_id],
-      shortURL: req.params.shortURL,
-      longURL: urlDatabase[req.params.shortURL].longURL };
-       res.render("urls_show", templateVars);
-  } else {
-    templateVars = { user: users[req.session.user_id],
-      shortURL: req.params.shortURL,
-      longURL: urlDatabase[req.params.shortURL].longURL };
-       res.render("urls_show", templateVars);
-  }
+  let templateVars = { user: users[req.session.user_id],
+    shortURL: req.params.shortURL,
+    longURL: urlDatabase[req.params.shortURL].longURL };
+     res.render("urls_show", templateVars);
 });
 
 app.get("/u/:shortURL", (req, res) => {
@@ -181,16 +152,19 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
-//Update function
+//UPDATE URL functionality *******************************************************
 app.post("/urls/:shortURL", (req, res) => {
   if(!users[req.session.user_id] || users[req.session.user_id].id !== urlDatabase[req.params.shortURL].userID){
-    res.sendStatus(403);
+    res.statusCode = 403;
+    res.send("You cannot edit this URL.");
   } else {
     urlDatabase[req.params.shortURL].longURL = req.body.longURL;
     res.redirect("/urls");
   }
 });
+//*******************************************************
 
+//DELETE URL functionality *******************************************************
 app.post("/urls/:shortURL/delete", (req, res) => {
   if(!users[req.session.user_id] || users[req.session.user_id].id !== urlDatabase[req.params.shortURL].userID){
     res.sendStatus(403);
@@ -200,3 +174,4 @@ app.post("/urls/:shortURL/delete", (req, res) => {
     res.redirect("/urls");
   }
 });
+//*******************************************************

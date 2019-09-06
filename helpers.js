@@ -3,9 +3,6 @@ const getUserByEmail = function(email, database) {
     if(email === database[user].email) {
       return database[user];
     }
-    else {
-      return undefined;
-    }
   }
 }
 
