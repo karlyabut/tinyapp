@@ -4,6 +4,7 @@ const cookieParser = require("cookie-session");
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
+const { getUserByEmail } = require("./helpers");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser({name: "user_id", keys: ["id"]}));
@@ -36,15 +37,15 @@ const users = {
   }
 }
 
-const emailExist = function(emailStr) {
-  for(let user in users) {
-    if(emailStr === users[user].email) {
-      console.log(users[user].email);
-      console.log(emailStr);
-      return true;
-    }
-  }
-}
+// const getUserByEmail = function(email, database) {
+//   for(let user in database) {
+//     if(email === database[user].email) {
+//       console.log(database[user].email);
+//       console.log(email);
+//       return user;
+//     }
+//   }
+// }
 
 // const urlDatabase = {
 //   "b2xVn2": "http://www.lighthouselabs.ca",
@@ -93,12 +94,10 @@ app.get("/urls", (req, res) => {
     // res.redirect("/login");
     templateVars = { user: users[req.session.user_id], 
       urls: urlDatabase };
-      console.log(templateVars);
     res.render("urls_index", templateVars);
   } else {
     templateVars = { user: users[req.session.user_id], 
       urls: urlsForUser(req.session.user_id) };
-      console.log(templateVars);
     res.render("urls_index", templateVars);
   };
 });
@@ -117,8 +116,6 @@ app.post("/urls", (req, res) => {
   let key = generateRandomString();
   urlDatabase[key] = { longURL: req.body.longURL, 
   userID: req.session.user_id};
-  
-  console.log("daksjdalkjdkasjdlkasjdlk", urlDatabase);
   res.redirect(`/urls/${key}`);
 });
 
@@ -130,13 +127,10 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
   for(let user in users) {
-    if(users[user].email === req.body.email && bcrypt.compareSync(req.body.password, users[user].password) && emailExist(req.body.email)) {
-      console.log("success");
-      // res.cookie("user_id", users[user].id)
+    if(users[user].email === req.body.email && bcrypt.compareSync(req.body.password, users[user].password) && getUserByEmail(req.body.email, users)) {
       req.session.user_id = user;
-      res.redirect("/urls");
-      console.log("SUUUCCCEEESSS", users);
-    }
+      return res.redirect("/urls");
+    }   
   }
   res.statusCode = 403;
   res.sendStatus(403);
@@ -155,8 +149,7 @@ app.get("/register", (req, res) => {
 
 app.post("/register", (req, res) => {
   let randomUserID = generateRandomString();
-  if(req.body.email === "" || req.body.password === "" || emailExist(req.body.email)) {
-    console.log("DUDE put in some values");
+  if(req.body.email === "" || req.body.password === "" || getUserByEmail(req.body.email, users)) {
     res.statusCode = 400;
     res.sendStatus(400);
   } else {
@@ -164,7 +157,6 @@ app.post("/register", (req, res) => {
     // res.cookie("user_id", randomUserID);
     req.session.user_id = randomUserID;
     res.redirect("/urls");
-    console.log("SUUUCCCEEESSS", users);
   }
 })
 
